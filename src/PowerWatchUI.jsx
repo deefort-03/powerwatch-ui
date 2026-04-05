@@ -2,18 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 
 const API_BASE = "https://powerwatch-backend-afqp.onrender.com";
 
-const DARK={bg0:"#04060d",bg1:"#080c17",bg2:"#0d1220",bg3:"#121929",border:"#1a2235",borderHi:"#243047",blue:"#3B82F6",blueHi:"#60A5FA",blueBg:"rgba(59,130,246,0.08)",green:"#10B981",greenBg:"rgba(16,185,129,0.08)",red:"#EF4444",redBg:"rgba(239,68,68,0.08)",amber:"#F59E0B",text0:"#F8FAFC",text1:"#94A3B8",text2:"#64748b",text3:"#cbd5e1"};
-const LIGHT={bg0:"#f8fafc",bg1:"#f1f5f9",bg2:"#ffffff",bg3:"#f8fafc",border:"#e2e8f0",borderHi:"#cbd5e1",blue:"#2563EB",blueHi:"#1d4ed8",blueBg:"rgba(37,99,235,0.08)",green:"#059669",greenBg:"rgba(5,150,105,0.08)",red:"#DC2626",redBg:"rgba(220,38,38,0.08)",amber:"#D97706",text0:"#0f172a",text1:"#334155",text2:"#64748b",text3:"#94a3b8"};
+const DARK={bg0:"#04060d",bg1:"#080c17",bg2:"#0d1220",bg3:"#121929",border:"#1a2235",borderHi:"#243047",blue:"#3B82F6",blueHi:"#60A5FA",blueBg:"rgba(59,130,246,0.08)",green:"#10B981",greenBg:"rgba(16,185,129,0.08)",red:"#EF4444",redBg:"rgba(239,68,68,0.08)",amber:"#F59E0B",amberBg:"rgba(245,158,11,0.08)",text0:"#F8FAFC",text1:"#94A3B8",text2:"#64748b",text3:"#cbd5e1"};
+const LIGHT={bg0:"#f8fafc",bg1:"#f1f5f9",bg2:"#ffffff",bg3:"#f8fafc",border:"#e2e8f0",borderHi:"#cbd5e1",blue:"#2563EB",blueHi:"#1d4ed8",blueBg:"rgba(37,99,235,0.08)",green:"#059669",greenBg:"rgba(5,150,105,0.08)",red:"#DC2626",redBg:"rgba(220,38,38,0.08)",amber:"#D97706",amberBg:"rgba(217,119,6,0.08)",text0:"#0f172a",text1:"#334155",text2:"#64748b",text3:"#94a3b8"};
 const getT=(dark)=>dark?DARK:LIGHT;
 const T=DARK;
 
-const LOCS = [
+const LOCS=[
   {id:"agbowo",name:"Agbowo",short:"AGW",color:"#3B82F6",bg:"rgba(59,130,246,0.08)",border:"rgba(59,130,246,0.2)"},
   {id:"orogun",name:"Orogun",short:"ORG",color:"#8B5CF6",bg:"rgba(139,92,246,0.08)",border:"rgba(139,92,246,0.2)"},
   {id:"barika",name:"Barika",short:"BRK",color:"#06B6D4",bg:"rgba(6,182,212,0.08)",border:"rgba(6,182,212,0.2)"},
 ];
 
-const SURVEY_QS = [
+const SURVEY_QS=[
   {id:"location",type:"choice",q:"Which area do you live in?",required:true,opts:["Agbowo","Orogun","Barika"]},
   {id:"hours",type:"scale",q:"Average hours of electricity per day?",required:true,min:0,max:24,unit:"hours"},
   {id:"surprised",type:"choice",q:"How often does an outage catch you off guard?",required:true,opts:["Never","Rarely (1–2×/month)","Sometimes (weekly)","Often (several times/week)","Almost always"]},
@@ -24,36 +24,56 @@ const SURVEY_QS = [
   {id:"impact",type:"text",q:"In your own words, how do outages affect your studies?",required:false,placeholder:"e.g. I can't charge my laptop, deadlines get delayed..."},
 ];
 
+// ── API helpers ───────────────────────────────────────────────────────────────
 async function fetchStatus(){const r=await fetch(API_BASE+"/api/status/all");if(!r.ok)throw new Error();return r.json();}
 async function fetchWeekly(){const r=await fetch(API_BASE+"/api/reports/daily/all?days=7");if(!r.ok)throw new Error();const data=await r.json();const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return data.map(d=>({...d,day:days[new Date(d.date).getDay()]}));}
 async function fetchMonthly(){const r=await fetch(API_BASE+"/api/reports/monthly/all?year="+new Date().getFullYear());if(!r.ok)throw new Error();return r.json();}
+async function fetchCommunity(){const r=await fetch(API_BASE+"/api/community/summary/all");if(!r.ok)throw new Error();return r.json();}
+async function postCommunityReport(location,accurate){const r=await fetch(API_BASE+"/api/community/report",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({location,accurate})});if(!r.ok)throw new Error();return r.json();}
+
 function timeAgo(iso){if(!iso)return"—";const m=Math.floor((Date.now()-new Date(iso))/60000);if(m<1)return"just now";if(m<60)return m+"m ago";return Math.floor(m/60)+"h ago";}
 
+// ── Outage duration helper ────────────────────────────────────────────────────
+function outageDuration(d){
+  if(!d||d.status!=="OFF"||!d.last_updated)return null;
+  const mins=Math.floor((Date.now()-new Date(d.last_updated))/60000);
+  if(mins<60)return mins+"m";
+  const h=Math.floor(mins/60);const m=mins%60;
+  return m>0?h+"h "+m+"m":h+"h";
+}
+
+// ── Power schedule predictor helper ──────────────────────────────────────────
+function getPrediction(weekly,locId){
+  if(!weekly||weekly.length<3)return null;
+  const avg=(weekly.reduce((s,d)=>s+(d[locId]||0),0)/weekly.length);
+  const trend=weekly.length>=2?(weekly[weekly.length-1][locId]||0)-(weekly[0][locId]||0):0;
+  const best=weekly.reduce((b,d)=>((d[locId]||0)>(b[locId]||0)?d:b),weekly[0]);
+  const worst=weekly.reduce((b,d)=>((d[locId]||0)<(b[locId]||0)?d:b),weekly[0]);
+  return{avg:avg.toFixed(1),trend,best:best.day,worst:worst.day,trendLabel:trend>0?"↑ Improving":trend<0?"↓ Declining":"→ Stable"};
+}
+
+// ── Shared UI ─────────────────────────────────────────────────────────────────
 function Logo({size=28}){
   return(
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
       <rect width="28" height="28" rx="7" fill={T.blueBg} stroke={T.border} strokeWidth="1"/>
       <circle cx="14" cy="14" r="3.5" fill={T.blue}/>
-      {[0,60,120,180,240,300].map((a,i)=>{
-        const rad=a*Math.PI/180;
-        return <line key={i} x1={14+Math.cos(rad)*5} y1={14+Math.sin(rad)*5} x2={14+Math.cos(rad)*9.5} y2={14+Math.sin(rad)*9.5} stroke={T.blue} strokeWidth="1.5" strokeLinecap="round" opacity={i%2===0?0.9:0.3}/>;
-      })}
-    </svg>
+      {[0,60,120,180,240,300].map((a,i)=>{const rad=a*Math.PI/180;return<line key={i} x1={14+Math.cos(rad)*5} y1={14+Math.sin(rad)*5} x2={14+Math.cos(rad)*9.5} y2={14+Math.sin(rad)*9.5} stroke={T.blue} strokeWidth="1.5" strokeLinecap="round" opacity={i%2===0?0.9:0.3}/>;})}</svg>
   );
 }
 
 function NavBar({page,setPage,dark,setDark}){
+  const T=getT(dark);
   return(
-    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:200,background:dark?"rgba(4,6,13,0.92)":"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid "+(dark?T.border:"#e2e8f0"),padding:"0 16px",height:"56px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:200,background:dark?"rgba(4,6,13,0.92)":"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid "+T.border,padding:"0 16px",height:"56px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div style={{display:"flex",alignItems:"center",gap:"9px",cursor:"pointer"}} onClick={()=>setPage("home")}>
-        <Logo/>
-        <span style={{fontSize:"15px",fontWeight:700,color:dark?T.text0:"#0f172a",letterSpacing:"-0.3px"}}>PowerWatch</span>
+        <Logo/><span style={{fontSize:"15px",fontWeight:700,color:T.text0,letterSpacing:"-0.3px"}}>PowerWatch</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:"4px"}}>
         {[["home","Home"],["dashboard","App"],["survey","Survey"]].map(([id,label])=>(
-          <button key={id} onClick={()=>setPage(id)} style={{padding:"6px 10px",borderRadius:"8px",border:"1px solid "+(page===id?T.blue+"44":"transparent"),background:page===id?T.blueBg:"transparent",color:page===id?T.blueHi:dark?T.text2:"#64748b",fontSize:"13px",fontWeight:page===id?600:400,cursor:"pointer",transition:"all 0.15s"}}>{label}</button>
+          <button key={id} onClick={()=>setPage(id)} style={{padding:"6px 10px",borderRadius:"8px",border:"1px solid "+(page===id?T.blue+"44":"transparent"),background:page===id?T.blueBg:"transparent",color:page===id?T.blueHi:T.text2,fontSize:"13px",fontWeight:page===id?600:400,cursor:"pointer",transition:"all 0.15s"}}>{label}</button>
         ))}
-        <button onClick={()=>setDark(d=>!d)} style={{marginLeft:"6px",width:"34px",height:"34px",borderRadius:"8px",border:"1px solid "+(dark?T.border:"#e2e8f0"),background:dark?"#0d1220":"#f1f5f9",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",transition:"all 0.2s",flexShrink:0}} title="Toggle theme">
+        <button onClick={()=>setDark(d=>!d)} style={{marginLeft:"6px",width:"34px",height:"34px",borderRadius:"8px",border:"1px solid "+T.border,background:dark?"#0d1220":"#f1f5f9",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",flexShrink:0}}>
           {dark?"☀️":"🌙"}
         </button>
       </div>
@@ -61,9 +81,10 @@ function NavBar({page,setPage,dark,setDark}){
   );
 }
 
-function BarChart({data,color,locId}){
+// ── Charts ────────────────────────────────────────────────────────────────────
+function BarChart({data,color,locId,T}){
   const [hov,setHov]=useState(null);
-  if(!data?.length)return <div style={{height:"72px",background:T.bg0,borderRadius:"6px"}}/>;
+  if(!data?.length)return<div style={{height:"72px",background:T.bg0,borderRadius:"6px"}}/>;
   const max=Math.max(...data.map(d=>d[locId]||0),1);
   return(
     <div style={{display:"flex",gap:"6px",alignItems:"flex-end",height:"72px"}}>
@@ -78,9 +99,9 @@ function BarChart({data,color,locId}){
   );
 }
 
-function LineChart({data,color,locId}){
+function LineChart({data,color,locId,T}){
   const [hov,setHov]=useState(null);
-  if(!data?.length)return <div style={{height:"56px",background:T.bg0,borderRadius:"6px"}}/>;
+  if(!data?.length)return<div style={{height:"56px",background:T.bg0,borderRadius:"6px"}}/>;
   const max=Math.max(...data.map(d=>d[locId]||0),1);
   const W=300,H=56;
   const pts=data.map((d,i)=>[(i/(data.length-1))*(W-16)+8,H-((d[locId]||0)/max)*(H-10)-5]);
@@ -103,39 +124,187 @@ function LineChart({data,color,locId}){
   );
 }
 
-function Drawer({loc,live,weekly,monthly,onClose,dark=true}){
+// ── NEW: Daily Digest Card ────────────────────────────────────────────────────
+function DailyDigest({weekly,T}){
+  if(!weekly?.length)return null;
+  // Use yesterday's data (second to last entry since last = today)
+  const yesterday=weekly.length>=2?weekly[weekly.length-2]:weekly[weekly.length-1];
+  if(!yesterday)return null;
+  const date=yesterday.date?new Date(yesterday.date).toLocaleDateString("en-NG",{weekday:"long",month:"short",day:"numeric"}):"Yesterday";
+  return(
+    <div style={{background:T.bg2,borderRadius:"16px",padding:"18px",border:"1px solid "+T.border,marginBottom:"16px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px"}}>
+        <div>
+          <div style={{fontSize:"11px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"2px"}}>Daily Digest</div>
+          <div style={{fontSize:"13px",fontWeight:600,color:T.text0}}>{date}</div>
+        </div>
+        <div style={{fontSize:"20px"}}>📋</div>
+      </div>
+      <div style={{display:"flex",gap:"8px"}}>
+        {LOCS.map(loc=>{
+          const hrs=yesterday[loc.id]||0;
+          const quality=hrs>=16?"Great":hrs>=10?"Okay":"Poor";
+          const qColor=hrs>=16?T.green:hrs>=10?T.amber:T.red;
+          return(
+            <div key={loc.id} style={{flex:1,background:T.bg0,borderRadius:"10px",padding:"12px 8px",textAlign:"center",border:"1px solid "+T.border}}>
+              <div style={{fontSize:"11px",color:T.text2,marginBottom:"4px"}}>{loc.name}</div>
+              <div style={{fontSize:"20px",fontWeight:800,color:loc.color,lineHeight:1,marginBottom:"3px"}}>{hrs.toFixed(0)}h</div>
+              <div style={{fontSize:"9px",fontWeight:600,color:qColor,textTransform:"uppercase",letterSpacing:"0.5px"}}>{quality}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── NEW: Power Schedule Predictor ─────────────────────────────────────────────
+function SchedulePredictor({weekly,T}){
+  if(!weekly||weekly.length<3)return null;
+  return(
+    <div style={{background:T.bg2,borderRadius:"16px",padding:"18px",border:"1px solid "+T.border,marginBottom:"16px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px"}}>
+        <div>
+          <div style={{fontSize:"11px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"2px"}}>Power Predictor</div>
+          <div style={{fontSize:"13px",fontWeight:600,color:T.text0}}>Based on last 7 days</div>
+        </div>
+        <div style={{fontSize:"20px"}}>🔮</div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+        {LOCS.map(loc=>{
+          const pred=getPrediction(weekly,loc.id);
+          if(!pred)return null;
+          const trendColor=pred.trend>0?T.green:pred.trend<0?T.red:T.text2;
+          return(
+            <div key={loc.id} style={{background:T.bg0,borderRadius:"12px",padding:"14px",border:"1px solid "+T.border}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                  <div style={{width:"8px",height:"8px",borderRadius:"50%",background:loc.color,flexShrink:0}}/>
+                  <span style={{fontSize:"14px",fontWeight:600,color:T.text0}}>{loc.name}</span>
+                </div>
+                <span style={{fontSize:"12px",fontWeight:700,color:trendColor}}>{pred.trendLabel}</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px"}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:"18px",fontWeight:800,color:loc.color,lineHeight:1}}>{pred.avg}h</div>
+                  <div style={{fontSize:"9px",color:T.text2,marginTop:"2px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Daily avg</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:"14px",fontWeight:700,color:T.green,lineHeight:1}}>{pred.best}</div>
+                  <div style={{fontSize:"9px",color:T.text2,marginTop:"2px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Best day</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:"14px",fontWeight:700,color:T.red,lineHeight:1}}>{pred.worst}</div>
+                  <div style={{fontSize:"9px",color:T.text2,marginTop:"2px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Worst day</div>
+                </div>
+              </div>
+              <div style={{marginTop:"10px",background:T.bg2,borderRadius:"6px",padding:"8px 10px",fontSize:"12px",color:T.text1,lineHeight:1.5}}>
+                💡 Expect about <strong style={{color:loc.color}}>{pred.avg} hours</strong> of power today. {pred.trend>0?"Supply has been improving this week.":pred.trend<0?"Supply has been declining — charge devices early.":"Supply has been stable this week."}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── NEW: Community Report Button ──────────────────────────────────────────────
+function CommunityReportButton({locId,community,onReport,T}){
+  const [voted,setVoted]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const stats=community?.[locId];
+
+  const handleVote=async(accurate)=>{
+    if(voted||loading)return;
+    setLoading(true);
+    try{
+      await postCommunityReport(locId,accurate);
+      setVoted(accurate);
+    }catch(e){console.error(e);}
+    finally{setLoading(false);if(onReport)onReport();}
+  };
+
+  return(
+    <div style={{marginTop:"12px",padding:"12px 14px",background:T.bg0,borderRadius:"10px",border:"1px solid "+T.border}}>
+      <div style={{fontSize:"11px",color:T.text2,marginBottom:"8px",textTransform:"uppercase",letterSpacing:"1px"}}>Is this reading accurate?</div>
+      {voted!==null?(
+        <div style={{fontSize:"13px",color:T.green,fontWeight:600}}>✓ Thanks for your report!</div>
+      ):(
+        <div style={{display:"flex",gap:"8px"}}>
+          <button onClick={()=>handleVote(true)} disabled={loading} style={{flex:1,padding:"8px",borderRadius:"8px",border:"1px solid "+T.green+"44",background:T.greenBg,color:T.green,fontSize:"13px",fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+            👍 Yes, accurate
+          </button>
+          <button onClick={()=>handleVote(false)} disabled={loading} style={{flex:1,padding:"8px",borderRadius:"8px",border:"1px solid "+T.red+"44",background:T.redBg,color:T.red,fontSize:"13px",fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+            👎 Not accurate
+          </button>
+        </div>
+      )}
+      {stats&&stats.total>0&&(
+        <div style={{marginTop:"8px",fontSize:"11px",color:T.text2}}>
+          {stats.total} report{stats.total>1?"s":""} · <span style={{color:stats.trust_score>=60?T.green:T.red,fontWeight:600}}>{stats.trust_score}% say accurate</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Drawer ────────────────────────────────────────────────────────────────────
+function Drawer({loc,live,weekly,monthly,community,onClose,onCommunityReport,dark=true}){
   const T=getT(dark);
   const d=live?.[loc.id];
   const on=d?.status==="ON";
+  const duration=outageDuration(d);
   const avg=weekly?.length?(weekly.reduce((s,w)=>s+(w[loc.id]||0),0)/weekly.length).toFixed(1):null;
   return(
     <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
       <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.75)",backdropFilter:"blur(8px)"}}/>
       <div style={{position:"relative",width:"100%",maxWidth:"480px",margin:"0 auto",background:T.bg1,borderRadius:"24px 24px 0 0",border:"1px solid "+loc.border,borderBottom:"none",padding:"0 20px 44px",animation:"drawerUp 0.32s cubic-bezier(0.16,1,0.3,1)",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"center",padding:"14px 0 20px"}}><div style={{width:"36px",height:"4px",background:T.border,borderRadius:"4px"}}/></div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"24px"}}>
+
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"20px"}}>
           <div>
             <div style={{fontSize:"11px",color:T.text2,letterSpacing:"2px",textTransform:"uppercase",marginBottom:"4px"}}>Location</div>
             <div style={{fontSize:"28px",fontWeight:800,color:loc.color,letterSpacing:"-0.5px",lineHeight:1}}>{loc.name}</div>
             <div style={{fontSize:"12px",color:T.text2,marginTop:"4px"}}>University of Ibadan · Off-campus</div>
           </div>
-          <div style={{padding:"8px 16px",borderRadius:"10px",background:on?T.greenBg:T.redBg,border:"1px solid "+(on?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"),color:on?T.green:T.red,fontSize:"13px",fontWeight:700}}>{on?"⚡ Online":"🔌 Offline"}</div>
+          <div style={{textAlign:"right"}}>
+            <div style={{padding:"8px 14px",borderRadius:"10px",background:on?T.greenBg:T.redBg,border:"1px solid "+(on?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"),color:on?T.green:T.red,fontSize:"13px",fontWeight:700,marginBottom:"4px"}}>
+              {on?"⚡ Online":"🔌 Offline"}
+            </div>
+            {!on&&duration&&(
+              <div style={{fontSize:"11px",color:T.red,fontWeight:600}}>Off for {duration}</div>
+            )}
+          </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"16px"}}>
-          {[["Status",on?"ON":"OFF",loc.color],["7-day avg",avg?avg+"h/day":"—",T.text0],["Last ping",d?.last_updated?timeAgo(d.last_updated):"—",T.text0],["Source",d?.source??"—",T.text1]].map(([k,v,c])=>(
+
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"}}>
+          {[
+            ["Status",   on?"ON":"OFF",                                         loc.color],
+            ["7-day avg",avg?avg+"h/day":"—",                                   T.text0],
+            ["Last ping",d?.last_updated?timeAgo(d.last_updated):"—",           T.text0],
+            ["Outage",   !on&&duration?duration:"—",                            T.red],
+          ].map(([k,v,c])=>(
             <div key={k} style={{background:T.bg0,borderRadius:"12px",padding:"14px 16px",border:"1px solid "+T.border}}>
               <div style={{fontSize:"10px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"8px"}}>{k}</div>
               <div style={{fontSize:"20px",fontWeight:700,color:c,lineHeight:1}}>{v}</div>
             </div>
           ))}
         </div>
-        <div style={{background:T.bg0,borderRadius:"14px",padding:"18px",marginBottom:"10px",border:"1px solid "+T.border}}>
+
+        {/* Community report */}
+        <CommunityReportButton locId={loc.id} community={community} onReport={onCommunityReport} T={T}/>
+
+        {/* Charts */}
+        <div style={{background:T.bg0,borderRadius:"14px",padding:"18px",marginBottom:"10px",border:"1px solid "+T.border,marginTop:"14px"}}>
           <div style={{fontSize:"10px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"14px"}}>This week</div>
-          <BarChart data={weekly} color={loc.color} locId={loc.id}/>
+          <BarChart data={weekly} color={loc.color} locId={loc.id} T={T}/>
         </div>
         <div style={{background:T.bg0,borderRadius:"14px",padding:"18px",border:"1px solid "+T.border}}>
           <div style={{fontSize:"10px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"10px"}}>Monthly trend</div>
-          <LineChart data={monthly} color={loc.color} locId={loc.id}/>
+          <LineChart data={monthly} color={loc.color} locId={loc.id} T={T}/>
         </div>
         <p style={{textAlign:"center",marginTop:"16px",fontSize:"11px",color:T.text3}}>Auto-refreshes every 30 seconds</p>
       </div>
@@ -143,6 +312,9 @@ function Drawer({loc,live,weekly,monthly,onClose,dark=true}){
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// LANDING PAGE
+// ══════════════════════════════════════════════════════════════════════════════
 function LandingPage({setPage,live,dark=true}){
   const T=getT(dark);
   const onCount=live?LOCS.filter(l=>live[l.id]?.status==="ON").length:null;
@@ -168,14 +340,17 @@ function LandingPage({setPage,live,dark=true}){
         <div style={{background:T.bg2,borderRadius:"16px",padding:"16px",border:"1px solid "+T.border,marginBottom:"48px"}}>
           <div style={{fontSize:"11px",color:T.text2,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:"12px"}}>Live right now</div>
           {LOCS.map(loc=>{
-            const d=live?.[loc.id];const on=d?.status==="ON";
+            const d=live?.[loc.id];const on=d?.status==="ON";const dur=outageDuration(d);
             return(
-              <div key={loc.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid "+T.border+"66"}}>
+              <div key={loc.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid "+T.border+"66"}}>
                 <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
                   <div style={{width:"8px",height:"8px",borderRadius:"50%",background:on?T.green:T.text3,animation:on?"blink 2.5s infinite":"none",flexShrink:0}}/>
                   <span style={{fontSize:"14px",color:T.text0,fontWeight:500}}>{loc.name}</span>
                 </div>
-                <span style={{fontSize:"13px",fontWeight:700,color:on?T.green:T.text2}}>{!live?"—":on?"Power ON":"Power OFF"}</span>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:"13px",fontWeight:700,color:on?T.green:T.text2}}>{!live?"—":on?"Power ON":"Power OFF"}</div>
+                  {!on&&dur&&<div style={{fontSize:"10px",color:T.red,marginTop:"1px"}}>Off for {dur}</div>}
+                </div>
               </div>
             );
           })}
@@ -185,7 +360,7 @@ function LandingPage({setPage,live,dark=true}){
       <section style={{padding:"0 24px 60px",maxWidth:"480px",margin:"0 auto"}}>
         <div style={{fontSize:"11px",color:T.text2,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"20px"}}>Why PowerWatch</div>
         <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
-          {[{icon:"⚡",title:"Real-time updates",desc:"IoT sensors report every 5 minutes. No guessing — just live data."},{icon:"📊",title:"Historical trends",desc:"See daily, weekly and monthly patterns to plan smarter."},{icon:"🔔",title:"Instant alerts",desc:"Know the moment an outage hits your area before it disrupts your day."}].map(({icon,title,desc})=>(
+          {[{icon:"⚡",title:"Real-time updates",desc:"IoT sensors report every 5 minutes. No guessing — just live data."},{icon:"📊",title:"Historical trends",desc:"See daily, weekly and monthly patterns to plan smarter."},{icon:"🔮",title:"Power predictions",desc:"We analyse patterns to predict your best and worst power days."},{icon:"🗳️",title:"Community reports",desc:"Students confirm or dispute sensor readings for extra accuracy."}].map(({icon,title,desc})=>(
             <div key={title} style={{background:T.bg2,borderRadius:"14px",padding:"18px 20px",border:"1px solid "+T.border,display:"flex",gap:"16px",alignItems:"flex-start"}}>
               <div style={{fontSize:"20px",flexShrink:0,marginTop:"2px"}}>{icon}</div>
               <div><div style={{fontSize:"15px",fontWeight:700,color:T.text0,marginBottom:"4px"}}>{title}</div><div style={{fontSize:"13px",color:T.text1,lineHeight:1.6}}>{desc}</div></div>
@@ -216,7 +391,10 @@ function LandingPage({setPage,live,dark=true}){
   );
 }
 
-function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function DashboardPage({live,weekly,monthly,community,loading,error,dark=true,onCommunityReport}){
   const T=getT(dark);
   const [selected,setSelected]=useState(null);
   const [alertOff,setAlertOff]=useState(false);
@@ -224,9 +402,12 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
   const now=new Date();
   const timeStr=now.toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"});
   const dateStr=now.toLocaleDateString("en-NG",{weekday:"short",month:"short",day:"numeric"});
+
   return(
     <div style={{padding:"76px 20px 40px",maxWidth:"480px",margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"24px"}}>
+
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"20px"}}>
         <div>
           <div style={{fontSize:"11px",color:T.text2,letterSpacing:"1px",textTransform:"uppercase",marginBottom:"4px"}}>{dateStr}</div>
           <h1 style={{fontSize:"26px",fontWeight:800,color:T.text0,letterSpacing:"-0.5px",lineHeight:1}}>Power Status</h1>
@@ -238,6 +419,7 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
         </div>
       </div>
 
+      {/* Alert */}
       {!alertOff&&offLocs.length>0&&(
         <div style={{background:T.redBg,border:"1px solid rgba(239,68,68,0.25)",borderRadius:"12px",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
           <div>
@@ -248,9 +430,13 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
         </div>
       )}
 
-      <div style={{display:"flex",flexDirection:"column",gap:"10px",marginBottom:"20px"}}>
+      {/* ── NEW: Daily Digest ── */}
+      <DailyDigest weekly={weekly} T={T}/>
+
+      {/* Location cards */}
+      <div style={{display:"flex",flexDirection:"column",gap:"10px",marginBottom:"16px"}}>
         {LOCS.map((loc,i)=>{
-          const d=live?.[loc.id];const on=d?.status==="ON";
+          const d=live?.[loc.id];const on=d?.status==="ON";const duration=outageDuration(d);
           return(
             <div key={loc.id} onClick={()=>!loading&&setSelected(loc)}
               style={{background:T.bg2,borderRadius:"16px",padding:"18px",border:"1px solid "+(on?loc.border:T.border),cursor:loading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all 0.18s",animation:"fadeCard "+(0.1+i*0.08)+"s ease both"}}
@@ -264,12 +450,14 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
                 </div>
                 <div>
                   <div style={{fontSize:"16px",fontWeight:700,color:T.text0,marginBottom:"2px"}}>{loc.name}</div>
-                  <div style={{fontSize:"11px",color:T.text2}}>{loading?"Fetching data...":d?.last_updated?"Updated "+timeAgo(d.last_updated):"Waiting for sensor"}</div>
+                  <div style={{fontSize:"11px",color:T.text2}}>
+                    {loading?"Fetching...":!on&&duration?<span style={{color:T.red,fontWeight:600}}>Offline for {duration}</span>:d?.last_updated?"Updated "+timeAgo(d.last_updated):"Waiting for sensor"}
+                  </div>
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
                 <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:"17px",fontWeight:800,color:on?loc.color:T.text2}}>{loading?"—":on?"ON":"OFF"}</div>
+                  <div style={{fontSize:"17px",fontWeight:800,color:on?loc.color:T.red}}>{loading?"—":on?"ON":"OFF"}</div>
                   <div style={{fontSize:"9px",color:T.text2,marginTop:"2px"}}>{d?.source??"—"}</div>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={T.text3} strokeWidth="2" strokeLinecap="round"/></svg>
@@ -279,6 +467,10 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
         })}
       </div>
 
+      {/* ── NEW: Power Schedule Predictor ── */}
+      <SchedulePredictor weekly={weekly} T={T}/>
+
+      {/* Weekly summary */}
       <div style={{background:T.bg2,borderRadius:"16px",padding:"20px",border:"1px solid "+T.border}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
           <div style={{fontSize:"13px",fontWeight:600,color:T.text0}}>This week</div>
@@ -302,11 +494,15 @@ function DashboardPage({live,weekly,monthly,loading,error,dark=true}){
         </div>
       </div>
       <p style={{textAlign:"center",fontSize:"11px",color:T.text3,marginTop:"12px"}}>Tap any card for detailed stats · Auto-refreshes every 30s</p>
-      {selected&&<Drawer loc={selected} live={live} weekly={weekly} monthly={monthly} onClose={()=>setSelected(null)} dark={dark}/>}
+
+      {selected&&<Drawer loc={selected} live={live} weekly={weekly} monthly={monthly} community={community} onClose={()=>setSelected(null)} onCommunityReport={onCommunityReport} dark={dark}/>}
     </div>
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SURVEY PAGE
+// ══════════════════════════════════════════════════════════════════════════════
 function SurveyPage({dark=true}){
   const T=getT(dark);
   const [step,setStep]=useState(-1);
@@ -425,8 +621,7 @@ function SurveyPage({dark=true}){
           )}
 
           <div style={{display:"flex",gap:"10px",marginTop:"24px"}}>
-            <button onClick={()=>setStep(s=>Math.max(-1,s-1))} style={{padding:"14px 18px",borderRadius:"10px",background:T.bg2,border:"1px solid "+T.border,color:T.text2,fontSize:"14px",cursor:"pointer",transition:"all 0.12s"}}
-              onMouseEnter={e=>e.currentTarget.style.color=T.text0} onMouseLeave={e=>e.currentTarget.style.color=T.text2}>← Back</button>
+            <button onClick={()=>setStep(s=>Math.max(-1,s-1))} style={{padding:"14px 18px",borderRadius:"10px",background:T.bg2,border:"1px solid "+T.border,color:T.text2,fontSize:"14px",cursor:"pointer",transition:"all 0.12s"}} onMouseEnter={e=>e.currentTarget.style.color=T.text0} onMouseLeave={e=>e.currentTarget.style.color=T.text2}>← Back</button>
             <button onClick={next} disabled={!canNext()} style={{flex:1,padding:"14px",borderRadius:"10px",background:canNext()?T.blue:T.bg2,border:"1px solid "+(canNext()?T.blue:T.border),color:canNext()?"#fff":T.text3,fontSize:"14px",fontWeight:700,cursor:canNext()?"pointer":"not-allowed",transition:"all 0.15s"}}>
               {step>=total-1?"Submit ✓":"Continue →"}
             </button>
@@ -437,6 +632,9 @@ function SurveyPage({dark=true}){
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ROOT APP
+// ══════════════════════════════════════════════════════════════════════════════
 export default function App(){
   const hash=window.location.hash.replace("#","");
   const [page,setPage]=useState(hash==="survey"?"survey":hash==="dashboard"?"dashboard":"home");
@@ -444,6 +642,7 @@ export default function App(){
   const [live,setLive]=useState(null);
   const [weekly,setWeekly]=useState(null);
   const [monthly,setMonthly]=useState(null);
+  const [community,setCommunity]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState(false);
 
@@ -455,30 +654,39 @@ export default function App(){
     finally{setLoading(false);}
   },[]);
 
+  const refreshCommunity=useCallback(async()=>{
+    try{const data=await fetchCommunity();setCommunity(data);}
+    catch{}
+  },[]);
+
   useEffect(()=>{
     refresh();
     fetchWeekly().then(setWeekly).catch(()=>{});
     fetchMonthly().then(setMonthly).catch(()=>{});
+    refreshCommunity();
   },[]);
 
   useEffect(()=>{const t=setInterval(refresh,30000);return()=>clearInterval(t);},[refresh]);
+  useEffect(()=>{const t=setInterval(refreshCommunity,60000);return()=>clearInterval(t);},[refreshCommunity]);
+
+  const T=getT(dark);
 
   return(
-    <div style={{minHeight:"100vh",background:dark?T.bg1:"#f1f5f9",color:dark?T.text0:"#0f172a",fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",transition:"background 0.3s,color 0.3s"}}>
+    <div style={{minHeight:"100vh",background:T.bg1,color:T.text0,fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",transition:"background 0.3s,color 0.3s"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes blink    {0%,100%{opacity:1}50%{opacity:0.3}}
         @keyframes drawerUp {from{transform:translateY(100%)}to{transform:translateY(0)}}
         @keyframes fadeCard {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         *{box-sizing:border-box;margin:0;padding:0;}
-        input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:${dark?DARK.border:LIGHT.border};border-radius:4px;outline:none;}
-        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${dark?DARK.blue:LIGHT.blue};cursor:pointer;border:3px solid ${dark?DARK.bg1:LIGHT.bg1};}
+        input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:${T.border};border-radius:4px;outline:none;}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${T.blue};cursor:pointer;border:3px solid ${T.bg1};}
         ::-webkit-scrollbar{width:3px;}
-        ::-webkit-scrollbar-thumb{background:${dark?DARK.border:LIGHT.border};border-radius:4px;}
+        ::-webkit-scrollbar-thumb{background:${T.border};border-radius:4px;}
       `}</style>
       <NavBar page={page} setPage={navigate} dark={dark} setDark={setDark}/>
       {page==="home"&&<LandingPage setPage={navigate} live={live} dark={dark}/>}
-      {page==="dashboard"&&<DashboardPage live={live} weekly={weekly} monthly={monthly} loading={loading} error={error} dark={dark}/>}
+      {page==="dashboard"&&<DashboardPage live={live} weekly={weekly} monthly={monthly} community={community} loading={loading} error={error} dark={dark} onCommunityReport={refreshCommunity}/>}
       {page==="survey"&&<SurveyPage dark={dark}/>}
     </div>
   );
