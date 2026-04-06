@@ -260,19 +260,20 @@ function HomePage({setTab,live,dark}){
           Real-time power tracking for off-campus students at the University of Ibadan.
         </p>
 
-        {/* Primary CTA */}
-        <button onClick={()=>setTab("dashboard")} style={{display:"flex",alignItems:"center",gap:"10px",padding:"15px 24px",borderRadius:"14px",background:"linear-gradient(135deg,#FF6B2B,#E85010)",border:"none",color:"#fff",fontSize:"15px",fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:"-0.2px",boxShadow:"0 8px 24px rgba(255,107,43,0.35)",marginBottom:"12px"}}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg>
-          Check Power Status
-          <span style={{marginLeft:"auto",opacity:0.8}}>→</span>
-        </button>
-        <button onClick={()=>setTab("survey")} style={{display:"block",width:"100%",padding:"14px 24px",borderRadius:"14px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(240,244,255,0.7)",fontSize:"14px",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
-          Take the Research Survey
-        </button>
+        {/* CTAs — both full width, consistent sizing */}
+        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          <button onClick={()=>setTab("dashboard")} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:"10px",padding:"16px 24px",borderRadius:"14px",background:"linear-gradient(135deg,#FF6B2B,#E85010)",border:"none",color:"#fff",fontSize:"15px",fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif",letterSpacing:"-0.2px",boxShadow:"0 8px 24px rgba(255,107,43,0.35)"}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg>
+            Check Power Status →
+          </button>
+          <button onClick={()=>setTab("survey")} style={{width:"100%",padding:"16px 24px",borderRadius:"14px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(240,244,255,0.7)",fontSize:"15px",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+            Take the Research Survey
+          </button>
+        </div>
       </div>
 
-      {/* Live status strip */}
-      <div style={{margin:"0 16px",marginTop:"-20px",background:D.card,borderRadius:"18px",border:"1px solid "+D.border,overflow:"hidden",boxShadow:"0 20px 40px rgba(0,0,0,0.4)"}}>
+      {/* Live status strip — no negative margin, clean separation */}
+      <div style={{margin:"24px 16px 0",background:D.card,borderRadius:"18px",border:"1px solid "+D.border,overflow:"hidden"}}>
         <div style={{padding:"14px 18px",borderBottom:"1px solid "+D.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{fontSize:"11px",fontWeight:700,color:D.t3,textTransform:"uppercase",letterSpacing:"1.5px"}}>Live Now</span>
           <span style={{fontSize:"10px",color:D.t3}}>Updated every 5 min</span>
@@ -301,14 +302,14 @@ function HomePage({setTab,live,dark}){
       </div>
 
       {/* Features */}
-      <div style={{padding:"32px 16px 0"}}>
-        <div style={{fontSize:"11px",fontWeight:700,color:D.t3,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"16px",paddingLeft:"4px"}}>Why PowerWatch</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
-          {[{e:"⚡",t:"Real-time",d:"IoT sensors every 5 min"},{e:"📊",t:"Historical",d:"Daily, weekly trends"},{e:"🔮",t:"Predictive",d:"See patterns & plan"},{e:"🗳️",t:"Community",d:"Student-verified data"}].map(({e,t,d})=>(
-            <div key={t} style={{background:D.card,borderRadius:"16px",padding:"18px 16px",border:"1px solid "+D.border}}>
-              <div style={{fontSize:"24px",marginBottom:"10px"}}>{e}</div>
-              <div style={{fontSize:"14px",fontWeight:700,color:D.t1,fontFamily:"'Outfit',sans-serif",marginBottom:"4px"}}>{t}</div>
-              <div style={{fontSize:"12px",color:D.t3,lineHeight:1.5}}>{d}</div>
+      <div style={{padding:"24px 16px 0"}}>
+        <div style={{fontSize:"11px",fontWeight:700,color:D.t3,textTransform:"uppercase",letterSpacing:"2px",marginBottom:"16px"}}>Why PowerWatch</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",alignItems:"stretch"}}>
+          {[{e:"⚡",t:"Real-time",d:"IoT sensors report every 5 minutes"},{e:"📊",t:"Historical",d:"Daily, weekly & monthly trends"},{e:"🔮",t:"Predictive",d:"Analyse patterns to plan ahead"},{e:"🗳️",t:"Community",d:"Student-verified sensor readings"}].map(({e,t,d})=>(
+            <div key={t} style={{background:D.card,borderRadius:"16px",padding:"20px 16px",border:"1px solid "+D.border,display:"flex",flexDirection:"column",gap:"8px"}}>
+              <div style={{fontSize:"26px",lineHeight:1}}>{e}</div>
+              <div style={{fontSize:"14px",fontWeight:700,color:D.t1,fontFamily:"'Outfit',sans-serif"}}>{t}</div>
+              <div style={{fontSize:"12px",color:D.t3,lineHeight:1.55,flex:1}}>{d}</div>
             </div>
           ))}
         </div>
@@ -335,6 +336,86 @@ function HomePage({setTab,live,dark}){
         <p style={{fontSize:"11px",color:D.t3}}>Adeoye Fortune · C62372 · Sub-Fort 30 · Technology & Innovation</p>
         <p style={{fontSize:"10px",color:D.t4,marginTop:"4px"}}>A Student-Led Capstone Initiative under The Fort Institute's FLDC</p>
       </div>
+    </div>
+  );
+}
+
+// ── Predictor Card (dropdown) ─────────────────────────────────────────────────
+function PredictorCard({weekly,T}){
+  const [locId,setLocId]=useState(LOCS[0].id);
+  const loc=LOCS.find(l=>l.id===locId);
+  const p=getPred(weekly,locId);
+  const tc=p?.trend>1?T.green:p?.trend<-1?T.red:T.t3;
+
+  return(
+    <div style={{background:T.card,borderRadius:"18px",padding:"18px",border:"1px solid "+T.border,marginBottom:"14px"}}>
+      {/* Header row */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
+        <div>
+          <div style={{fontSize:"11px",fontWeight:600,color:T.t3,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"2px"}}>Power Predictor</div>
+          <div style={{fontFamily:"'Outfit',sans-serif",fontSize:"15px",fontWeight:700,color:T.t1}}>Based on last 7 days</div>
+        </div>
+        <span style={{fontSize:"22px"}}>🔮</span>
+      </div>
+
+      {/* Dropdown location selector */}
+      <div style={{position:"relative",marginBottom:"16px"}}>
+        <select
+          value={locId}
+          onChange={e=>setLocId(e.target.value)}
+          style={{
+            width:"100%",padding:"11px 16px",borderRadius:"12px",
+            background:T.raised,border:"1px solid "+T.border,
+            color:T.t1,fontSize:"14px",fontWeight:600,
+            fontFamily:"'DM Sans',sans-serif",
+            cursor:"pointer",outline:"none",
+            appearance:"none",WebkitAppearance:"none",
+            paddingRight:"36px",
+          }}>
+          {LOCS.map(l=>(
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
+        {/* Dropdown arrow */}
+        <div style={{position:"absolute",right:"14px",top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9l6 6 6-6" stroke={T.t3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      {/* Stats for selected location */}
+      {p&&(
+        <>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+              <div style={{width:"10px",height:"10px",borderRadius:"50%",background:loc.color}}/>
+              <span style={{fontFamily:"'Outfit',sans-serif",fontSize:"15px",fontWeight:700,color:T.t1}}>{loc.name}</span>
+            </div>
+            <span style={{fontSize:"12px",fontWeight:700,color:tc,background:tc+"22",padding:"4px 10px",borderRadius:"20px",border:"1px solid "+tc+"44"}}>{p.label}</span>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginBottom:"14px"}}>
+            {[["Daily avg",p.avg+"h",loc.color],["Best day",p.best,T.green],["Worst day",p.worst,T.red]].map(([l,v,c])=>(
+              <div key={l} style={{background:T.raised,borderRadius:"10px",padding:"12px 8px",textAlign:"center",border:"1px solid "+T.border}}>
+                <div style={{fontFamily:"'Outfit',sans-serif",fontSize:"18px",fontWeight:800,color:c,lineHeight:1,marginBottom:"4px"}}>{v}</div>
+                <div style={{fontSize:"9px",color:T.t3,textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{background:T.raised,borderRadius:"10px",padding:"12px 14px",fontSize:"13px",color:T.t2,lineHeight:1.6,border:"1px solid "+T.border}}>
+            💡 Expect about <strong style={{color:loc.color}}>{p.avg} hrs</strong> today in {loc.name}.{" "}
+            {p.trend>1?"Supply has been improving — good time to charge all devices."
+             :p.trend<-1?"Supply has been declining — charge your devices early in the day."
+             :"Supply has been stable this week."}
+          </div>
+
+          <div style={{marginTop:"10px",fontSize:"11px",color:T.t3,textAlign:"center"}}>
+            Based on 7-day average · Not a guarantee
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -488,46 +569,8 @@ function DashboardPage({live,weekly,monthly,community,loading,error,dark,onRepor
         );
       })()}
 
-      {/* Predictor */}
-      {weekly&&weekly.length>=3&&(
-        <div style={{background:T.card,borderRadius:"18px",padding:"18px",border:"1px solid "+T.border,marginBottom:"14px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
-            <div>
-              <div style={{fontSize:"11px",fontWeight:600,color:T.t3,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"2px"}}>Power Predictor</div>
-              <div style={{fontFamily:"'Outfit',sans-serif",fontSize:"15px",fontWeight:700,color:T.t1}}>Based on last 7 days</div>
-            </div>
-            <span style={{fontSize:"22px"}}>🔮</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
-            {LOCS.map(loc=>{
-              const p=getPred(weekly,loc.id);if(!p)return null;
-              const tc=p.trend>1?T.green:p.trend<-1?T.red:T.t3;
-              return(
-                <div key={loc.id} style={{background:T.raised,borderRadius:"12px",padding:"14px",border:"1px solid "+T.border}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-                      <div style={{width:"8px",height:"8px",borderRadius:"50%",background:loc.color}}/>
-                      <span style={{fontFamily:"'Outfit',sans-serif",fontSize:"15px",fontWeight:700,color:T.t1}}>{loc.name}</span>
-                    </div>
-                    <span style={{fontSize:"11px",fontWeight:700,color:tc}}>{p.label}</span>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginBottom:"10px"}}>
-                    {[["Avg",p.avg+"h",loc.color],["Best",p.best,T.green],["Worst",p.worst,T.red]].map(([l,v,c])=>(
-                      <div key={l} style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Outfit',sans-serif",fontSize:"16px",fontWeight:800,color:c,lineHeight:1}}>{v}</div>
-                        <div style={{fontSize:"9px",color:T.t3,marginTop:"3px",textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{background:T.overlay||T.base,borderRadius:"8px",padding:"9px 12px",fontSize:"12px",color:T.t2,lineHeight:1.55}}>
-                    💡 About <strong style={{color:loc.color}}>{p.avg} hrs</strong> today.{" "}{p.trend>1?"Supply improving — good time to charge all devices.":p.trend<-1?"Supply declining — charge early.":"Supply stable this week."}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Predictor — with dropdown */}
+      {weekly&&weekly.length>=3&&<PredictorCard weekly={weekly} T={T}/> }
 
       <p style={{textAlign:"center",fontSize:"11px",color:T.t4,marginTop:"8px"}}>Tap a card for full details · Refreshes every 30s</p>
 
