@@ -298,8 +298,8 @@ function HomePage({setTab,live,dark}){
         </div>
 
         <h1 style={{fontFamily:"'Outfit',sans-serif",fontSize:"42px",fontWeight:800,color:dark?"#F0F4FF":T.t1,lineHeight:1.05,letterSpacing:"-2px",marginBottom:"16px"}}>
-          Stop Guessing.<br/>
-          <span style={{color:"#FF6B2B"}}>Know when the<br/>lights are on.</span>
+          Stop guessing<br/>
+          <span style={{color:"#FF6B2B"}}>Know when the<br/>lights are on</span>
         </h1>
 
         <p style={{fontSize:"16px",color:T.t2,lineHeight:1.75,marginBottom:"36px",maxWidth:"360px",fontFamily:"'DM Sans',sans-serif"}}>
