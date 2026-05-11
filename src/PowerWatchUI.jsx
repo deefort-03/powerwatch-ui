@@ -444,9 +444,9 @@ function HomePage({setTab,live,dark}){
 The goal is to provide you with an electricity tracking platform in several locations accessible to anyone, anywhere, ultimately making you smarter.
         </p>
         <div style={{paddingTop:"14px",borderTop:"1px solid "+T.border}}>
-          <p style={{fontSize:"12px",color:T.t3,marginBottom:"3px",fontFamily:"'DM Sans',sans-serif"}}>Sector: Technology & Innovation · FLDC Cohort 6</p>
-          <p style={{fontSize:"12px",color:T.t3,fontFamily:"'DM Sans',sans-serif"}}>Adeoye Fortune · C62372 · Sub-Fort 30 · University of Ibadan</p>
-          <p style={{fontSize:"11px",color:T.t4,marginTop:"6px",fontFamily:"'DM Sans',sans-serif"}}>A Student-Led Capstone Initiative under The Fort Institute's FLDC</p>
+          <p style={{fontSize:"12px",color:T.t3,marginBottom:"3px",fontFamily:"'DM Sans',sans-serif"}}></p>
+          <p style={{fontSize:"12px",color:T.t3,fontFamily:"'DM Sans',sans-serif"}}></p>
+          <p style={{fontSize:"11px",color:T.t4,marginTop:"6px",fontFamily:"'DM Sans',sans-serif"}}></p>
         </div>
       </div>
 
