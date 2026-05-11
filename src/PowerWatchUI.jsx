@@ -356,12 +356,12 @@ function HomePage({setTab,live,dark}){
         </div>
 
         <h1 style={{fontFamily:"'Outfit',sans-serif",fontSize:"40px",fontWeight:800,color:dark?"#F0F4FF":T.t1,lineHeight:1.08,letterSpacing:"-1.5px",marginBottom:"16px"}}>
-          Stop Guessing.<br/>
-          <span style={{color:accent}}>Know when the<br/>lights are on.</span>
+          Stop Guessing<br/>
+          <span style={{color:accent}}>Know when the<br/>lights are on</span>
         </h1>
 
         <p style={{fontSize:"15px",color:T.t2,lineHeight:1.8,marginBottom:"32px",maxWidth:"340px"}}>
-          Real-time electricity tracking for off-campus students in Agbowo, Orogun and Barika. Save your transport fare and study smarter.
+          Real-time electricity tracking for off-campus students and residents along UI environs. Plan your time better ultimately making you smarter.
         </p>
 
         <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
@@ -476,7 +476,7 @@ function DashboardPage({live,weekly,monthly,community,loading,error,dark,onRepor
         <div>
           <p style={{fontSize:"11px",fontWeight:600,color:T.t3,letterSpacing:"0.5px",marginBottom:"4px",fontFamily:"'DM Sans',sans-serif"}}>{date}</p>
           <h1 style={{fontFamily:"'Outfit',sans-serif",fontSize:"26px",fontWeight:800,color:T.t1,letterSpacing:"-0.5px",lineHeight:1}}>Grid Monitor</h1>
-          <p style={{fontSize:"12px",color:T.t3,marginTop:"4px",fontFamily:"'DM Sans',sans-serif"}}>Agbowo · Orogun · Barika</p>
+          <p style={{fontSize:"12px",color:T.t3,marginTop:"4px",fontFamily:"'DM Sans',sans-serif"}}></p>
         </div>
         <div style={{textAlign:"right"}}>
           <p style={{fontFamily:"'Outfit',sans-serif",fontSize:"24px",fontWeight:800,color:T.t1,lineHeight:1}}>{time}</p>
