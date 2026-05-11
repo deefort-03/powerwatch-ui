@@ -434,7 +434,6 @@ function HomePage({setTab,live,dark}){
           <Logo size={24} dark={dark}/>
           <div>
             <p style={{fontFamily:"'Outfit',sans-serif",fontSize:"15px",fontWeight:800,color:T.t1}}>About Smart Streets</p>
-            <p style={{fontSize:"11px",color:T.t3,fontFamily:"'DM Sans',sans-serif"}}>An automated urban data initiative</p>
           </div>
         </div>
         <p style={{fontSize:"14px",color:T.t2,lineHeight:1.8,marginBottom:"14px",fontFamily:"'DM Sans',sans-serif"}}>
