@@ -30,13 +30,13 @@ const LOCS = [
 ];
 
 const SURVEY_QS = [
-  {id:"location",type:"choice",q:"Which area do you live in?",required:true,opts:["Agbowo","Orogun","Barika"]},
+  {id:"people",type:"choice",q:"Choose the one that best describes you.",required:true,opts:["Student","Resident"]}
+  {id:"location",type:"choice",q:"Which area do you live in?",required:true,opts:["UI campus","Agbowo","Orogun","Barika","Others"]},
   {id:"hours",type:"scale",q:"On average, how many hours of electricity do you get per day?",required:true,min:0,max:24,unit:"hrs"},
-  {id:"surprised",type:"choice",q:"How often does a power outage catch you off guard?",required:true,opts:["Never","Rarely (1–2x/month)","Sometimes (weekly)","Often (several times/week)","Almost always"]},
-  {id:"lost",type:"scale",q:"How many productive hours do you lose per week due to outages?",required:true,min:0,max:20,unit:"hrs"},
+  {id:"impact",type:"choice",q:"How often does a power outage catch you off guard?",required:true,opts:["Yes", "No"]},
+  {id:"lost",type:"scale",q:"Has this platform helped or has the potential of helping you plan your day better?",required:true,min:0,max:20,unit:"hrs"},
   {id:"confidence",type:"rating",q:"How confident are you at planning your day around power availability?",required:true,low:"Not at all",high:"Very confident"},
   {id:"aware",type:"choice",q:"Are you aware of any platform that tracks power availability in your area?",required:true,opts:["Yes, I use one","Heard of one but don't use it","No, nothing like that exists","Not sure"]},
-  {id:"coping",type:"multi",q:"How do you currently cope with power outages?",required:false,opts:["Charge devices in advance","Use a generator","Go to campus for power","Candles or fuel lamp","Mobile data only","No strategy"]},
   {id:"impact",type:"text",q:"In your own words, how do power outages affect your studies or daily life?",required:false,placeholder:"e.g. I waste transport money going to check if there is light..."},
 ];
 
