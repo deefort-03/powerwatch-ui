@@ -438,10 +438,10 @@ function HomePage({setTab,live,dark}){
           </div>
         </div>
         <p style={{fontSize:"14px",color:T.t2,lineHeight:1.8,marginBottom:"14px",fontFamily:"'DM Sans',sans-serif"}}>
-          Smart Streets is an automated urban data initiative developed as a capstone project for the Fort Leadership Development Course (FLDC) — Cohort 6. This platform uses IoT sensors to eliminate the commuter's gamble faced by thousands of off-campus students around the University of Ibadan.
+          Smart Streets is a community-centered project. Utilizes sensors to monitor electricity status across UI environs enabling students and residents to be smarter in their daily activities.
         </p>
         <p style={{fontSize:"14px",color:T.t2,lineHeight:1.8,marginBottom:"16px",fontFamily:"'DM Sans',sans-serif"}}>
-          By bridging the gap between raw grid data and the student community, our mission is to provide transparent, real-time electricity intelligence — so you can study smarter, transit safely, and maximise your time.
+The goal is to provide you with an electricity tracking platform in several locations accessible to anyone, anywhere, ultimately making you smarter.
         </p>
         <div style={{paddingTop:"14px",borderTop:"1px solid "+T.border}}>
           <p style={{fontSize:"12px",color:T.t3,marginBottom:"3px",fontFamily:"'DM Sans',sans-serif"}}>Sector: Technology & Innovation · FLDC Cohort 6</p>
